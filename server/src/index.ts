@@ -3,7 +3,9 @@ import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
 import dotenv from 'dotenv';
-import mongoose from 'mongoose';
+
+// Initialize Firebase (no MongoDB!)
+import './firestore';
 
 dotenv.config();
 
@@ -28,16 +30,12 @@ app.use('/api/bookings', bookingRoutes);
 app.use('/api/users', userRoutes);
 
 app.get('/', (req, res) => {
-    res.send('LuxStay API is running');
+    res.send('LuxStay API is running with Firebase! 🔥');
 });
-
-// Database Connection
-mongoose
-    .connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/luxstay')
-    .then(() => console.log('MongoDB connected'))
-    .catch((err) => console.error('MongoDB connection error:', err));
 
 // Start Server
 app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
+    console.log(`🚀 Server running on port ${PORT}`);
+    console.log('🔥 Using Firebase Firestore');
+    console.log('🔑 JWT Secret check:', process.env.JWT_SECRET ? 'Loaded ✅' : 'NOT LOADED ❌');
 });

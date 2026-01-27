@@ -65,8 +65,9 @@ const Booking = () => {
                 guests: bookingData.guests
             });
             setStep(4); // Success Step
-        } catch (error) {
-            alert('Booking failed. Please try again.');
+        } catch (error: any) {
+            console.error('Booking submission error:', error.response?.data || error.message);
+            alert(`Booking failed: ${error.response?.data?.message || 'Please try again.'}`);
         } finally {
             setProcessing(false);
         }

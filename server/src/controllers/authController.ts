@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
-import User from '../models/User';
+import { db, admin } from '../firestore';
 import { z } from 'zod';
 
 const registerSchema = z.object({
@@ -20,26 +20,49 @@ export const register = async (req: Request, res: Response) => {
     try {
         const validatedData = registerSchema.parse(req.body);
 
-        const existingUser = await User.findOne({ email: validatedData.email });
-        if (existingUser) {
+        // Check if user exists
+        const usersSnapshot = await db.collection('users')
+            .where('email', '==', validatedData.email)
+            .limit(1)
+            .get();
+
+        if (!usersSnapshot.empty) {
             return res.status(400).json({ message: 'User already exists' });
         }
 
         const salt = await bcrypt.genSalt(10);
         const hashedPassword = await bcrypt.hash(validatedData.password, salt);
 
-        const user = new User({
-            ...validatedData,
+        // Create new user
+        const userRef = db.collection('users').doc();
+        await userRef.set({
+            fullName: validatedData.fullName,
+            email: validatedData.email,
             password: hashedPassword,
+            phone: validatedData.phone,
+            profileImage: '',
+            address: {},
+            role: 'user',
+            isVerified: false,
+            createdAt: admin.firestore.FieldValue.serverTimestamp(),
+            updatedAt: admin.firestore.FieldValue.serverTimestamp()
         });
 
-        await user.save();
+        const token = jwt.sign(
+            { id: userRef.id, role: 'user' },
+            process.env.JWT_SECRET || 'secret',
+            { expiresIn: '7d' }
+        );
 
-        const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET || 'secret', {
-            expiresIn: '7d',
+        res.status(201).json({
+            token,
+            user: {
+                id: userRef.id,
+                fullName: validatedData.fullName,
+                email: validatedData.email,
+                role: 'user'
+            }
         });
-
-        res.status(201).json({ token, user: { id: user._id, fullName: user.fullName, email: user.email, role: user.role } });
     } catch (error) {
         console.error('Registration error:', error);
         if (error instanceof z.ZodError) {
@@ -53,21 +76,39 @@ export const login = async (req: Request, res: Response) => {
     try {
         const validatedData = loginSchema.parse(req.body);
 
-        const user = await User.findOne({ email: validatedData.email });
-        if (!user) {
+        // Find user by email
+        const usersSnapshot = await db.collection('users')
+            .where('email', '==', validatedData.email)
+            .limit(1)
+            .get();
+
+        if (usersSnapshot.empty) {
             return res.status(400).json({ message: 'Invalid credentials' });
         }
 
-        const isMatch = await bcrypt.compare(validatedData.password, user.password!);
+        const userDoc = usersSnapshot.docs[0];
+        const userData = userDoc.data();
+
+        const isMatch = await bcrypt.compare(validatedData.password, userData.password || '');
         if (!isMatch) {
             return res.status(400).json({ message: 'Invalid credentials' });
         }
 
-        const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET || 'secret', {
-            expiresIn: '7d',
-        });
+        const token = jwt.sign(
+            { id: userDoc.id, role: userData.role },
+            process.env.JWT_SECRET || 'secret',
+            { expiresIn: '7d' }
+        );
 
-        res.json({ token, user: { id: user._id, fullName: user.fullName, email: user.email, role: user.role } });
+        res.json({
+            token,
+            user: {
+                id: userDoc.id,
+                fullName: userData.fullName,
+                email: userData.email,
+                role: userData.role
+            }
+        });
     } catch (error) {
         console.error('Login error:', error);
         if (error instanceof z.ZodError) {

@@ -8,9 +8,18 @@ import Register from './pages/Register';
 import Booking from './pages/Booking';
 import About from './pages/About';
 import Contact from './pages/Contact';
-import { Profile, MyBookings } from './pages/AuthPages';
+import Profile from './pages/Profile';
+import MyBookings from './pages/MyBookings';
+
+import { app } from './firebase';
+import { useEffect } from 'react';
 
 function App() {
+  useEffect(() => {
+    console.log('Firebase Initialized:', app.name); // Should log "[DEFAULT]"
+    console.log('Firebase Config:', app.options);
+  }, []);
+
   return (
     <Router>
       <Routes>

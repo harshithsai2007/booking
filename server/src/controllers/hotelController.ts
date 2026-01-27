@@ -1,64 +1,99 @@
 import { Request, Response } from 'express';
-import Hotel from '../models/Hotel';
-import Room from '../models/Room';
+import { db } from '../firestore';
 
 export const getHotels = async (req: Request, res: Response) => {
     try {
         const { city, minPrice, maxPrice, stars, amenities, search, sort } = req.query;
 
-        let query: any = {};
+        let query = db.collection('hotels');
 
-        if (city) query['location.city'] = city;
-        if (stars) query.starRating = { $in: (stars as string).split(',') }; // e.g. ?stars=3,4,5
+        // Apply filters
+        if (city) {
+            query = query.where('location.city', '==', city) as any;
+        }
+        if (stars) {
+            const starArray = (stars as string).split(',').map(Number);
+            query = query.where('starRating', 'in', starArray) as any;
+        }
+
+        // Fetch all matching hotels
+        const snapshot = await query.get();
+        let hotels = snapshot.docs.map(doc => ({ id: doc.id, _id: doc.id, ...doc.data() }));
+
+        // Client-side filtering for complex queries (Firebase doesn't support all query types)
         if (minPrice || maxPrice) {
-            query['priceRange.min'] = { $gte: Number(minPrice) || 0 };
-            if (maxPrice) query['priceRange.max'] = { $lte: Number(maxPrice) };
-        }
-        if (amenities) {
-            query.amenities = { $all: (amenities as string).split(',') };
-        }
-        if (search) {
-            query.$or = [
-                { name: { $regex: search, $options: 'i' } },
-                { 'location.city': { $regex: search, $options: 'i' } },
-                { 'location.state': { $regex: search, $options: 'i' } }
-            ];
+            hotels = hotels.filter((hotel: any) => {
+                const min = hotel.priceRange?.min || 0;
+                const max = hotel.priceRange?.max || Infinity;
+                if (minPrice && min < Number(minPrice)) return false;
+                if (maxPrice && max > Number(maxPrice)) return false;
+                return true;
+            });
         }
 
-        let hotels = Hotel.find(query);
+        if (amenities) {
+            const amenitiesArray = (amenities as string).split(',');
+            hotels = hotels.filter((hotel: any) =>
+                amenitiesArray.every(a => hotel.amenities?.includes(a))
+            );
+        }
+
+        if (search) {
+            const searchLower = (search as string).toLowerCase();
+            hotels = hotels.filter((hotel: any) =>
+                hotel.name?.toLowerCase().includes(searchLower) ||
+                hotel.location?.city?.toLowerCase().includes(searchLower) ||
+                hotel.location?.state?.toLowerCase().includes(searchLower)
+            );
+        }
 
         // Sorting
-        if (sort === 'priceLow') hotels = hotels.sort({ 'priceRange.min': 1 });
-        else if (sort === 'priceHigh') hotels = hotels.sort({ 'priceRange.min': -1 });
-        else if (sort === 'rating') hotels = hotels.sort({ rating: -1 });
-        else hotels = hotels.sort({ createdAt: -1 }); // Newest/Default
+        if (sort === 'priceLow') {
+            hotels.sort((a: any, b: any) => (a.priceRange?.min || 0) - (b.priceRange?.min || 0));
+        } else if (sort === 'priceHigh') {
+            hotels.sort((a: any, b: any) => (b.priceRange?.min || 0) - (a.priceRange?.min || 0));
+        } else if (sort === 'rating') {
+            hotels.sort((a: any, b: any) => (b.rating || 0) - (a.rating || 0));
+        }
 
-        const results = await hotels.exec();
-        res.json(results);
+        res.json(hotels);
     } catch (error) {
+        console.error('getHotels error:', error);
         res.status(500).json({ message: 'Server error' });
     }
 };
 
 export const getHotelById = async (req: Request, res: Response) => {
     try {
-        const hotel = await Hotel.findById(req.params.id);
-        if (!hotel) return res.status(404).json({ message: 'Hotel not found' });
+        const id = req.params.id as string;
+        const hotelDoc = await db.collection('hotels').doc(id).get();
 
-        // Fetch rooms for this hotel
-        const rooms = await Room.find({ hotel: hotel._id });
+        if (!hotelDoc.exists) {
+            return res.status(404).json({ message: 'Hotel not found' });
+        }
 
-        res.json({ ...hotel.toObject(), rooms });
+        // Fetch rooms subcollection
+        const roomsSnapshot = await db.collection('hotels').doc(id).collection('rooms').get();
+        const rooms = roomsSnapshot.docs.map(doc => ({ _id: doc.id, id: doc.id, ...doc.data() }));
+
+        res.json({ id: hotelDoc.id, _id: hotelDoc.id, ...hotelDoc.data(), rooms });
     } catch (error) {
+        console.error('getHotelById error:', error);
         res.status(500).json({ message: 'Server error' });
     }
 };
 
 export const getFeaturedHotels = async (req: Request, res: Response) => {
     try {
-        const hotels = await Hotel.find({ featured: true }).limit(6);
+        const snapshot = await db.collection('hotels')
+            .where('featured', '==', true)
+            .limit(6)
+            .get();
+
+        const hotels = snapshot.docs.map(doc => ({ id: doc.id, _id: doc.id, ...doc.data() }));
         res.json(hotels);
     } catch (error) {
+        console.error('getFeaturedHotels error:', error);
         res.status(500).json({ message: 'Server error' });
     }
 };

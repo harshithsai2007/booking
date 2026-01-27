@@ -1,7 +1,8 @@
 import React from 'react';
-import { Star, MapPin } from 'lucide-react';
+import { Star, MapPin, Heart } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import { toggleFavorite } from '../../services/api';
 
 interface HotelCardProps {
     hotel: any;
@@ -28,6 +29,16 @@ const HotelCard: React.FC<HotelCardProps> = ({ hotel, index }) => {
                         {hotel.featured ? 'Featured' : 'Popular'}
                     </span>
                 </div>
+                <button
+                    onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        toggleFavorite(hotel._id);
+                    }}
+                    className="absolute top-4 right-4 p-2 rounded-full bg-black/20 backdrop-blur-md text-white hover:bg-white hover:text-red-500 transition-all border border-white/10"
+                >
+                    <Heart className="w-4 h-4" />
+                </button>
             </div>
 
             <div className="p-5">

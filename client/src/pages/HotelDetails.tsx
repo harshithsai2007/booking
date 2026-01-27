@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { getHotelById } from '../services/api';
-import { Star, MapPin, Wifi, Check, User, Coffee, Utensils, Shield, ArrowRight } from 'lucide-react';
+import { getHotelById, toggleFavorite } from '../services/api';
+import { Star, MapPin, Check, ArrowRight, Heart } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 const HotelDetails = () => {
@@ -9,7 +9,6 @@ const HotelDetails = () => {
     const navigate = useNavigate();
     const [hotel, setHotel] = useState<any>(null);
     const [loading, setLoading] = useState(true);
-    const [selectedImage, setSelectedImage] = useState(0);
 
     useEffect(() => {
         const fetchHotel = async () => {
@@ -80,9 +79,17 @@ const HotelDetails = () => {
                     <div className="mb-8">
                         <div className="flex justify-between items-start mb-2">
                             <h1 className="text-4xl font-bold text-white mb-2">{hotel.name}</h1>
-                            <div className="flex items-center gap-1 bg-white/10 px-3 py-1 rounded-full">
-                                <Star className="w-4 h-4 text-yellow-400 fill-yellow-400" />
-                                <span className="text-white font-medium">{hotel.starRating} Stars</span>
+                            <div className="flex items-center gap-4">
+                                <button
+                                    onClick={() => toggleFavorite(hotel._id)}
+                                    className="p-3 rounded-full bg-white/5 border border-white/10 text-white hover:bg-white hover:text-red-500 transition-all"
+                                >
+                                    <Heart className="w-6 h-6" />
+                                </button>
+                                <div className="flex items-center gap-1 bg-white/10 px-3 py-1 rounded-full">
+                                    <Star className="w-4 h-4 text-yellow-400 fill-yellow-400" />
+                                    <span className="text-white font-medium">{hotel.starRating} Stars</span>
+                                </div>
                             </div>
                         </div>
                         <div className="flex items-center text-zinc-400 mb-6">

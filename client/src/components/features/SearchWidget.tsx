@@ -11,7 +11,8 @@ const SearchWidget = () => {
 
     const handleSearch = (e: React.FormEvent) => {
         e.preventDefault();
-        navigate(`/hotels?city=${location}&checkIn=${checkIn}&checkOut=${checkOut}&guests=${guests}`);
+        // Use 'search' param for location to match backend's generic search (city/state/name)
+        navigate(`/hotels?search=${location}&checkIn=${checkIn}&checkOut=${checkOut}&guests=${guests}`);
     };
 
     return (
