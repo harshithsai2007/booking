@@ -21,5 +21,5 @@ yarn-debug.log*
 Thumbs.db
 
 # Firebase
-# User explicitly asked to push "every firebase"
-# firebase-service-account.json 
+# User explicitly asked to push "every firebase" but it causes revocation
+firebase-service-account.json 

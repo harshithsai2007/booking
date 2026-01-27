@@ -1,9 +1,22 @@
-import { db, admin } from '../firestore';
+import admin from 'firebase-admin';
 import path from 'path';
 import { readFileSync } from 'fs';
 import dotenv from 'dotenv';
 
 dotenv.config();
+
+const saPath = path.join(process.cwd(), 'firebase-service-account.json');
+const sa = JSON.parse(readFileSync(saPath, 'utf8'));
+console.log('📦 Loaded Service Account Path:', saPath);
+console.log('🔑 Key ID:', sa.private_key_id);
+
+if (admin.apps.length === 0) {
+    admin.initializeApp({
+        credential: admin.credential.cert(sa)
+    });
+}
+
+const db = admin.firestore();
 
 const hotels = [
     {
