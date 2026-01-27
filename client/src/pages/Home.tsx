@@ -5,7 +5,7 @@ import { getFeaturedHotels } from '../services/api';
 import { motion } from 'framer-motion';
 
 const Home = () => {
-    const [featuredHotels, setFeaturedHotels] = useState([]);
+    const [featuredHotels, setFeaturedHotels] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
