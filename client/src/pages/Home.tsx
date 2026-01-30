@@ -3,6 +3,7 @@ import SearchWidget from '../components/features/SearchWidget';
 import HotelCard from '../components/features/HotelCard';
 import { getFeaturedHotels } from '../services/api';
 import { motion } from 'framer-motion';
+import { Search } from 'lucide-react';
 
 const Home = () => {
     const [featuredHotels, setFeaturedHotels] = useState<any[]>([]);
@@ -86,6 +87,16 @@ const Home = () => {
                         {[1, 2, 3].map((n) => (
                             <div key={n} className="h-96 bg-zinc-900/50 rounded-2xl animate-pulse"></div>
                         ))}
+                    </div>
+                ) : featuredHotels.length === 0 ? (
+                    <div className="text-center py-20 bg-zinc-900/30 rounded-3xl border border-zinc-800/50 backdrop-blur-sm">
+                        <div className="w-16 h-16 bg-white/5 rounded-full flex items-center justify-center mx-auto mb-6">
+                            <Search className="w-8 h-8 text-zinc-500" />
+                        </div>
+                        <h3 className="text-xl font-medium text-white mb-2">No Hotels Found</h3>
+                        <p className="text-zinc-400 max-w-sm mx-auto">
+                            It seems your database is currently empty. Please run the seeding script to populate your hotel collection.
+                        </p>
                     </div>
                 ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
