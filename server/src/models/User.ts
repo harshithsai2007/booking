@@ -36,4 +36,5 @@ const UserSchema: Schema = new Schema({
     favorites: [{ type: Schema.Types.ObjectId, ref: 'Hotel' }]
 }, { timestamps: true });
 
-export default mongoose.model<IUser>('User', UserSchema);
+const User = mongoose.model<IUser>('User', UserSchema);
+export default User;

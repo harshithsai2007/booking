@@ -36,4 +36,5 @@ const BookingSchema: Schema = new Schema({
     paymentMethod: { type: String, default: 'UPI' }
 }, { timestamps: true });
 
-export default mongoose.model<IBooking>('Booking', BookingSchema);
+const Booking = mongoose.model<IBooking>('Booking', BookingSchema);
+export default Booking;
