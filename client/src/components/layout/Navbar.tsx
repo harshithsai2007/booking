@@ -15,7 +15,12 @@ const Navbar = () => {
             const userData = localStorage.getItem('user');
             setIsAuthenticated(!!token);
             if (userData) {
-                setUser(JSON.parse(userData));
+                try {
+                    setUser(JSON.parse(userData));
+                } catch (e) {
+                    console.error('Failed to parse user data from localStorage', e);
+                    localStorage.removeItem('user');
+                }
             }
         };
 
