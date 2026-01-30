@@ -1,61 +1,51 @@
 import { Request, Response } from 'express';
-import { db } from '../firestore';
+import Hotel from '../models/Hotel';
+import Room from '../models/Room';
 
 export const getHotels = async (req: Request, res: Response) => {
     try {
         const { city, minPrice, maxPrice, stars, amenities, search, sort } = req.query;
 
-        let query = db.collection('hotels');
+        let query: any = {};
 
         // Apply filters
         if (city) {
-            query = query.where('location.city', '==', city) as any;
+            query['location.city'] = { $regex: new RegExp(city as string, 'i') };
         }
         if (stars) {
             const starArray = (stars as string).split(',').map(Number);
-            query = query.where('starRating', 'in', starArray) as any;
+            query.starRating = { $in: starArray };
         }
-
-        // Fetch all matching hotels
-        const snapshot = await query.get();
-        let hotels = snapshot.docs.map(doc => ({ id: doc.id, _id: doc.id, ...doc.data() }));
-
-        // Client-side filtering for complex queries (Firebase doesn't support all query types)
         if (minPrice || maxPrice) {
-            hotels = hotels.filter((hotel: any) => {
-                const min = hotel.priceRange?.min || 0;
-                const max = hotel.priceRange?.max || Infinity;
-                if (minPrice && min < Number(minPrice)) return false;
-                if (maxPrice && max > Number(maxPrice)) return false;
-                return true;
-            });
+            query['priceRange.min'] = {};
+            if (minPrice) query['priceRange.min'].$gte = Number(minPrice);
+            if (maxPrice) query['priceRange.min'].$lte = Number(maxPrice);
         }
-
         if (amenities) {
             const amenitiesArray = (amenities as string).split(',');
-            hotels = hotels.filter((hotel: any) =>
-                amenitiesArray.every(a => hotel.amenities?.includes(a))
-            );
+            query.amenities = { $all: amenitiesArray };
+        }
+        if (search) {
+            const searchRegex = new RegExp(search as string, 'i');
+            query.$or = [
+                { name: searchRegex },
+                { 'location.city': searchRegex },
+                { 'location.state': searchRegex }
+            ];
         }
 
-        if (search) {
-            const searchLower = (search as string).toLowerCase();
-            hotels = hotels.filter((hotel: any) =>
-                hotel.name?.toLowerCase().includes(searchLower) ||
-                hotel.location?.city?.toLowerCase().includes(searchLower) ||
-                hotel.location?.state?.toLowerCase().includes(searchLower)
-            );
-        }
+        let mongoQuery = Hotel.find(query);
 
         // Sorting
         if (sort === 'priceLow') {
-            hotels.sort((a: any, b: any) => (a.priceRange?.min || 0) - (b.priceRange?.min || 0));
+            mongoQuery = mongoQuery.sort({ 'priceRange.min': 1 });
         } else if (sort === 'priceHigh') {
-            hotels.sort((a: any, b: any) => (b.priceRange?.min || 0) - (a.priceRange?.min || 0));
+            mongoQuery = mongoQuery.sort({ 'priceRange.min': -1 });
         } else if (sort === 'rating') {
-            hotels.sort((a: any, b: any) => (b.rating || 0) - (a.rating || 0));
+            mongoQuery = mongoQuery.sort({ rating: -1 });
         }
 
+        const hotels = await mongoQuery;
         res.json(hotels);
     } catch (error) {
         console.error('getHotels error:', error);
@@ -65,18 +55,17 @@ export const getHotels = async (req: Request, res: Response) => {
 
 export const getHotelById = async (req: Request, res: Response) => {
     try {
-        const id = req.params.id as string;
-        const hotelDoc = await db.collection('hotels').doc(id).get();
+        const id = req.params.id;
+        const hotel = await Hotel.findById(id);
 
-        if (!hotelDoc.exists) {
+        if (!hotel) {
             return res.status(404).json({ message: 'Hotel not found' });
         }
 
-        // Fetch rooms subcollection
-        const roomsSnapshot = await db.collection('hotels').doc(id).collection('rooms').get();
-        const rooms = roomsSnapshot.docs.map(doc => ({ _id: doc.id, id: doc.id, ...doc.data() }));
+        // Fetch rooms associated with the hotel
+        const rooms = await Room.find({ hotel: id });
 
-        res.json({ id: hotelDoc.id, _id: hotelDoc.id, ...hotelDoc.data(), rooms });
+        res.json({ ...hotel.toObject(), rooms });
     } catch (error) {
         console.error('getHotelById error:', error);
         res.status(500).json({ message: 'Server error' });
@@ -85,12 +74,7 @@ export const getHotelById = async (req: Request, res: Response) => {
 
 export const getFeaturedHotels = async (req: Request, res: Response) => {
     try {
-        const snapshot = await db.collection('hotels')
-            .where('featured', '==', true)
-            .limit(6)
-            .get();
-
-        const hotels = snapshot.docs.map(doc => ({ id: doc.id, _id: doc.id, ...doc.data() }));
+        const hotels = await Hotel.find({ featured: true }).limit(6);
         res.json(hotels);
     } catch (error) {
         console.error('getFeaturedHotels error:', error);

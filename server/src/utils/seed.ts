@@ -185,24 +185,22 @@ const hotels = [
         featured: false,
         priceRange: { min: 5000, max: 10000 },
         images: ["https://images.unsplash.com/photo-1611892440504-42a792e24d32?auto=format&fit=crop&q=80&w=1000"]
-    },
-    // Add more hotels as needed to reach 15-20
+    }
 ];
 
 const seedDB = async () => {
     try {
-        await mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/luxstay');
+        await mongoose.connect(process.env.MONGODB_URI as string);
         console.log('Connected to MongoDB');
 
         await Hotel.deleteMany({});
         await Room.deleteMany({});
         console.log('Cleared existing data');
 
-        const createdHotels = await Hotel.insertMany(hotels);
-        console.log(`Seeded ${createdHotels.length} hotels`);
+        for (const hotelData of hotels) {
+            const hotel = await Hotel.create(hotelData);
+            console.log(`Created hotel: ${hotel.name}`);
 
-        // Add rooms for each hotel (Simplified)
-        for (const hotel of createdHotels) {
             const rooms = [
                 {
                     hotel: hotel._id,
@@ -222,11 +220,11 @@ const seedDB = async () => {
                 }
             ];
             await Room.insertMany(rooms);
+            console.log(`Seeded rooms for ${hotel.name}`);
         }
-        console.log('Seeded rooms for all hotels');
 
+        console.log('✅ Successfully seeded all hotels and rooms!');
         mongoose.disconnect();
-        console.log('Disconnected');
     } catch (error) {
         console.error('Seeding error:', error);
         mongoose.disconnect();

@@ -1,5 +1,7 @@
 import { Request, Response } from 'express';
-import { db, admin } from '../firestore';
+import Booking from '../models/Booking';
+import Hotel from '../models/Hotel';
+import Room from '../models/Room';
 import { z } from 'zod';
 
 // Minimal interface for authenticated request (middleware adds user)
@@ -23,30 +25,13 @@ export const createBooking = async (req: AuthRequest, res: Response) => {
         if (!req.user) return res.status(401).json({ message: 'Unauthorized' });
 
         console.log('📝 Creating booking for user:', req.user.id);
-        console.log('📦 Booking data:', req.body);
-
         const data = createBookingSchema.parse(req.body);
 
-        // Fetch room from Firestore subcollection
-        const roomDoc = await db
-            .collection('hotels')
-            .doc(data.hotelId)
-            .collection('rooms')
-            .doc(data.roomId)
-            .get();
+        const room = await Room.findById(data.roomId);
+        const hotel = await Hotel.findById(data.hotelId);
 
-        let roomData = roomDoc.exists ? roomDoc.data() : null;
-        const hotelDoc = await db.collection('hotels').doc(data.hotelId).get();
-        let hotelData = hotelDoc.exists ? hotelDoc.data() : null;
-
-        if (!hotelDoc.exists) {
-            console.warn('⚠️ Hotel not found:', data.hotelId, '- using fallback');
-            hotelData = { name: 'Prototype Hotel', location: { city: 'Unknown', state: 'Unknown' } };
-        }
-
-        if (!roomDoc.exists) {
-            console.warn('⚠️ Room not found:', data.roomId, 'in hotel:', data.hotelId, '- using fallback');
-            roomData = { type: 'Prototype Room', pricePerNight: 5000 };
+        if (!hotel || !room) {
+            return res.status(404).json({ message: 'Hotel or Room not found' });
         }
 
         // Calculate Nights
@@ -56,29 +41,26 @@ export const createBooking = async (req: AuthRequest, res: Response) => {
         const nights = Math.max(1, Math.ceil(timeDiff / (1000 * 3600 * 24)));
 
         // Calculate Total Price
-        const totalAmount = nights * (roomData?.pricePerNight || 5000) * 1.12; // Adding 12% GST
+        const totalAmount = nights * (room.pricePerNight || 5000) * 1.12; // Adding 12% GST
 
         const bookingReference = `LUX${Date.now()}`;
 
-        // Create booking in Firestore
-        const bookingRef = await db.collection('bookings').add({
-            userId: req.user.id,
-            hotelId: data.hotelId,
-            roomId: data.roomId,
+        // Create booking in MongoDB
+        const booking = await Booking.create({
+            user: req.user.id,
+            hotel: data.hotelId,
+            room: data.roomId,
             bookingReference,
-            checkInDate: admin.firestore.Timestamp.fromDate(start),
-            checkOutDate: admin.firestore.Timestamp.fromDate(end),
+            checkInDate: start,
+            checkOutDate: end,
             guests: data.guests,
             totalAmount,
             status: 'confirmed',
             paymentStatus: 'paid',
-            paymentMethod: 'UPI',
-            createdAt: admin.firestore.FieldValue.serverTimestamp(),
-            updatedAt: admin.firestore.FieldValue.serverTimestamp()
+            paymentMethod: 'UPI'
         });
 
-        const newBooking = await bookingRef.get();
-        res.status(201).json({ id: newBooking.id, ...newBooking.data() });
+        res.status(201).json(booking);
     } catch (error) {
         if (error instanceof z.ZodError) {
             return res.status(400).json({ errors: error.issues });
@@ -92,52 +74,11 @@ export const getMyBookings = async (req: AuthRequest, res: Response) => {
     try {
         if (!req.user) return res.status(401).json({ message: 'Unauthorized' });
 
-        // Get all bookings for this user
-        const bookingsSnapshot = await db
-            .collection('bookings')
-            .where('userId', '==', req.user.id)
-            .get();
-
-        const bookings = [];
-
-        // Manually populate hotel and room data
-        for (const bookingDoc of bookingsSnapshot.docs) {
-            const bookingData = bookingDoc.data();
-
-            // Fetch hotel
-            const hotelDoc = await db.collection('hotels').doc(bookingData.hotelId).get();
-            const hotelData = hotelDoc.exists ? hotelDoc.data() : {
-                name: 'Unknown Hotel',
-                location: { city: 'N/A', state: 'N/A' },
-                images: ['https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&q=80&w=800']
-            };
-
-            // Fetch room
-            const roomDoc = await db
-                .collection('hotels')
-                .doc(bookingData.hotelId)
-                .collection('rooms')
-                .doc(bookingData.roomId)
-                .get();
-            const roomData = roomDoc.exists ? roomDoc.data() : { type: 'Unknown Room', pricePerNight: 0 };
-
-            bookings.push({
-                _id: bookingDoc.id,
-                ...bookingData,
-                hotel: { _id: bookingData.hotelId, ...hotelData },
-                room: { _id: bookingData.roomId, ...roomData },
-                // Convert Firestore Timestamps to ISO strings for frontend
-                checkInDate: bookingData.checkInDate?.toDate?.().toISOString() || bookingData.checkInDate,
-                checkOutDate: bookingData.checkOutDate?.toDate?.().toISOString() || bookingData.checkOutDate,
-            });
-        }
-
-        // Sort by createdAt desc in memory
-        bookings.sort((a: any, b: any) => {
-            const dateA = a.createdAt?.toDate?.() || new Date(0);
-            const dateB = b.createdAt?.toDate?.() || new Date(0);
-            return (dateB as any) - (dateA as any);
-        });
+        // Get all bookings for this user and populate hotel and room info
+        const bookings = await Booking.find({ user: req.user.id })
+            .populate('hotel')
+            .populate('room')
+            .sort({ createdAt: -1 });
 
         res.json(bookings);
     } catch (error) {

@@ -1,33 +1,38 @@
-# LuxStay - Hotel Booking Platform (Prototype)
+# LuxStay - Hotel Booking Platform
 
-LuxStay is a premium hotel booking platform prototype built with React and Node.js, utilizing Firebase Firestore for data storage.
+LuxStay is a premium hotel booking platform built with React and Node.js, utilizing MongoDB Atlas for robust data storage and JWT for secure authentication.
 
 ## Features
 
 - **Modern UI:** Sleek, dark-themed design with smooth animations.
-- **Hotel Search:** Search for hotels in Andhra Pradesh and Telangana.
-- **Booking System:** Guaranteed booking creation even with incomplete data (proto-friendly).
-- **My Bookings:** track your reservations.
-- **Firebase Integration:** Powered by Firestore for real-time data management.
+- **Hotel Search:** Advanced search and filtering for hotels in Andhra Pradesh and Telangana.
+- **Booking System:** Seamless booking creation with real-time price calculation.
+- **My Bookings:** Track and manage your hotel reservations.
+- **MongoDB Integration:** Powered by MongoDB Atlas for scalable data management.
+- **JWT Auth:** Secure, custom authentication system (replacing Firebase).
 
 ## Project Structure
 
 - `client/`: React frontend (Vite, TypeScript, Tailwind CSS, Framer Motion).
-- `server/`: Express backend (TypeScript, Firebase Admin SDK).
+- `server/`: Express backend (TypeScript, Mongoose, JWT).
 
 ## Setup Instructions
 
 ### Backend (Server)
 1. Navigate to `server/`
 2. Install dependencies: `npm install`
-3. Configure `.env` with `JWT_SECRET` and other required variables.
-4. Ensure `firebase-service-account.json` is present.
+3. Configure `.env` with:
+   - `MONGODB_URI`: Your MongoDB Atlas connection string.
+   - `JWT_SECRET`: Secret key for token signing.
+   - `PORT`: Server port (default 5000).
+4. Seed the database: `npm run seed` (optional, for initial hotel data).
 5. Run server: `npm run dev`
 
 ### Frontend (Client)
 1. Navigate to `client/`
 2. Install dependencies: `npm install`
-3. Configure `.env` with `VITE_API_URL`.
+3. Configure `.env` with:
+   - `VITE_API_URL`: Backend API URL (e.g., http://localhost:5000/api).
 4. Run client: `npm run dev`
 
 ## Deployment & Repository

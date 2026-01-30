@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
-import { db, admin } from '../firestore';
+import User from '../models/User';
 import { z } from 'zod';
 
 const registerSchema = z.object({
@@ -21,12 +21,9 @@ export const register = async (req: Request, res: Response) => {
         const validatedData = registerSchema.parse(req.body);
 
         // Check if user exists
-        const usersSnapshot = await db.collection('users')
-            .where('email', '==', validatedData.email)
-            .limit(1)
-            .get();
+        const userExists = await User.findOne({ email: validatedData.email });
 
-        if (!usersSnapshot.empty) {
+        if (userExists) {
             return res.status(400).json({ message: 'User already exists' });
         }
 
@@ -34,22 +31,17 @@ export const register = async (req: Request, res: Response) => {
         const hashedPassword = await bcrypt.hash(validatedData.password, salt);
 
         // Create new user
-        const userRef = db.collection('users').doc();
-        await userRef.set({
+        const user = await User.create({
             fullName: validatedData.fullName,
             email: validatedData.email,
             password: hashedPassword,
             phone: validatedData.phone,
-            profileImage: '',
-            address: {},
             role: 'user',
-            isVerified: false,
-            createdAt: admin.firestore.FieldValue.serverTimestamp(),
-            updatedAt: admin.firestore.FieldValue.serverTimestamp()
+            isVerified: false
         });
 
         const token = jwt.sign(
-            { id: userRef.id, role: 'user' },
+            { id: user._id, role: user.role },
             process.env.JWT_SECRET || 'secret',
             { expiresIn: '7d' }
         );
@@ -57,10 +49,10 @@ export const register = async (req: Request, res: Response) => {
         res.status(201).json({
             token,
             user: {
-                id: userRef.id,
-                fullName: validatedData.fullName,
-                email: validatedData.email,
-                role: 'user'
+                id: user._id,
+                fullName: user.fullName,
+                email: user.email,
+                role: user.role
             }
         });
     } catch (error) {
@@ -77,25 +69,19 @@ export const login = async (req: Request, res: Response) => {
         const validatedData = loginSchema.parse(req.body);
 
         // Find user by email
-        const usersSnapshot = await db.collection('users')
-            .where('email', '==', validatedData.email)
-            .limit(1)
-            .get();
+        const user = await User.findOne({ email: validatedData.email });
 
-        if (usersSnapshot.empty) {
+        if (!user) {
             return res.status(400).json({ message: 'Invalid credentials' });
         }
 
-        const userDoc = usersSnapshot.docs[0];
-        const userData = userDoc.data();
-
-        const isMatch = await bcrypt.compare(validatedData.password, userData.password || '');
+        const isMatch = await bcrypt.compare(validatedData.password, user.password || '');
         if (!isMatch) {
             return res.status(400).json({ message: 'Invalid credentials' });
         }
 
         const token = jwt.sign(
-            { id: userDoc.id, role: userData.role },
+            { id: user._id, role: user.role },
             process.env.JWT_SECRET || 'secret',
             { expiresIn: '7d' }
         );
@@ -103,10 +89,10 @@ export const login = async (req: Request, res: Response) => {
         res.json({
             token,
             user: {
-                id: userDoc.id,
-                fullName: userData.fullName,
-                email: userData.email,
-                role: userData.role
+                id: user._id,
+                fullName: user.fullName,
+                email: user.email,
+                role: user.role
             }
         });
     } catch (error) {

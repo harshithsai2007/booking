@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
-import { db, admin } from '../firestore';
+import User from '../models/User';
+import Hotel from '../models/Hotel';
 
 interface AuthRequest extends Request {
     user?: any;
@@ -9,16 +10,13 @@ export const getProfile = async (req: AuthRequest, res: Response) => {
     try {
         if (!req.user) return res.status(401).json({ message: 'Unauthorized' });
 
-        const userDoc = await db.collection('users').doc(req.user.id).get();
+        const user = await User.findById(req.user.id).select('-password');
 
-        if (!userDoc.exists) {
+        if (!user) {
             return res.status(404).json({ message: 'User not found' });
         }
 
-        const userData = userDoc.data();
-        const { password, ...userWithoutPassword } = userData as any;
-
-        res.json({ id: userDoc.id, ...userWithoutPassword });
+        res.json(user);
     } catch (error) {
         console.error('getProfile error:', error);
         res.status(500).json({ message: 'Server error' });
@@ -31,19 +29,24 @@ export const updateProfile = async (req: AuthRequest, res: Response) => {
 
         const { fullName, phone, address, profileImage } = req.body;
 
-        await db.collection('users').doc(req.user.id).update({
-            ...(fullName && { fullName }),
-            ...(phone && { phone }),
-            ...(address && { address }),
-            ...(profileImage && { profileImage }),
-            updatedAt: admin.firestore.FieldValue.serverTimestamp()
-        });
+        const updatedUser = await User.findByIdAndUpdate(
+            req.user.id,
+            {
+                $set: {
+                    ...(fullName && { fullName }),
+                    ...(phone && { phone }),
+                    ...(address && { address }),
+                    ...(profileImage && { profileImage })
+                }
+            },
+            { new: true }
+        ).select('-password');
 
-        const updatedDoc = await db.collection('users').doc(req.user.id).get();
-        const userData = updatedDoc.data();
-        const { password, ...userWithoutPassword } = userData as any;
+        if (!updatedUser) {
+            return res.status(404).json({ message: 'User not found' });
+        }
 
-        res.json(userWithoutPassword);
+        res.json(updatedUser);
     } catch (error) {
         console.error('updateProfile error:', error);
         res.status(500).json({ message: 'Server error' });
@@ -56,22 +59,18 @@ export const toggleFavorite = async (req: AuthRequest, res: Response) => {
         const { hotelId } = req.body;
         if (!hotelId) return res.status(400).json({ message: 'Hotel ID required' });
 
-        const userRef = db.collection('users').doc(req.user.id);
-        const userDoc = await userRef.get();
-        if (!userDoc.exists) return res.status(404).json({ message: 'User not found' });
+        const user = await User.findById(req.user.id);
+        if (!user) return res.status(404).json({ message: 'User not found' });
 
-        const userData = userDoc.data();
-        const favorites = userData?.favorites || [];
-
-        const index = favorites.indexOf(hotelId);
+        const index = user.favorites.indexOf(hotelId);
         if (index > -1) {
-            favorites.splice(index, 1); // Remove
+            user.favorites.splice(index, 1); // Remove
         } else {
-            favorites.push(hotelId); // Add
+            user.favorites.push(hotelId); // Add
         }
 
-        await userRef.update({ favorites, updatedAt: admin.firestore.FieldValue.serverTimestamp() });
-        res.json({ favorites });
+        await user.save();
+        res.json({ favorites: user.favorites });
     } catch (error) {
         console.error('toggleFavorite error:', error);
         res.status(500).json({ message: 'Server error' });
@@ -82,19 +81,10 @@ export const getFavorites = async (req: AuthRequest, res: Response) => {
     try {
         if (!req.user) return res.status(401).json({ message: 'Unauthorized' });
 
-        const userDoc = await db.collection('users').doc(req.user.id).get();
-        if (!userDoc.exists) return res.status(404).json({ message: 'User not found' });
+        const user = await User.findById(req.user.id).populate('favorites');
+        if (!user) return res.status(404).json({ message: 'User not found' });
 
-        const favorites = userDoc.data()?.favorites || [];
-        if (favorites.length === 0) return res.json([]);
-
-        // Fetch hotel details for favorites
-        const hotelsSnapshot = await db.collection('hotels')
-            .where(admin.firestore.FieldPath.documentId(), 'in', favorites.slice(0, 30))
-            .get();
-
-        const hotels = hotelsSnapshot.docs.map(doc => ({ id: doc.id, _id: doc.id, ...doc.data() }));
-        res.json(hotels);
+        res.json(user.favorites);
     } catch (error) {
         console.error('getFavorites error:', error);
         res.status(500).json({ message: 'Server error' });

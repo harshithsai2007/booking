@@ -11,14 +11,7 @@ import Contact from './pages/Contact';
 import Profile from './pages/Profile';
 import MyBookings from './pages/MyBookings';
 
-import { app } from './firebase';
-import { useEffect } from 'react';
-
 function App() {
-  useEffect(() => {
-    console.log('Firebase Initialized:', app.name); // Should log "[DEFAULT]"
-    console.log('Firebase Config:', app.options);
-  }, []);
 
   return (
     <Router>
