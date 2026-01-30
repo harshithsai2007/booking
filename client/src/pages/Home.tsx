@@ -42,7 +42,7 @@ const Home = () => {
                         initial={{ opacity: 0, y: 30 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.8 }}
-                        className="text-5xl md:text-7xl font-bold text-white mb-6 tracking-tight"
+                        className="text-4xl md:text-7xl font-bold text-white mb-6 tracking-tight"
                     >
                         Discover the Soul of <br className="hidden md:block" />
                         <span className="text-transparent bg-clip-text bg-gradient-to-r from-white to-zinc-400">Telugu Heritage</span>

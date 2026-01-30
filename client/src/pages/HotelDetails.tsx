@@ -42,7 +42,7 @@ const HotelDetails = () => {
         <div className="min-h-screen pt-20 pb-12 bg-apple-black">
             {/* Gallery Section */}
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-12">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 h-[500px]">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 h-[300px] md:h-[500px]">
                     <div className="md:row-span-2 h-full rounded-2xl overflow-hidden relative group">
                         <img
                             src={hotel.images[0]}
@@ -78,7 +78,7 @@ const HotelDetails = () => {
                 <div className="flex-1">
                     <div className="mb-8">
                         <div className="flex justify-between items-start mb-2">
-                            <h1 className="text-4xl font-bold text-white mb-2">{hotel.name}</h1>
+                            <h1 className="text-3xl md:text-4xl font-bold text-white mb-2">{hotel.name}</h1>
                             <div className="flex items-center gap-4">
                                 <button
                                     onClick={() => toggleFavorite(hotel._id)}

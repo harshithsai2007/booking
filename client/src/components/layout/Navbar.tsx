@@ -118,9 +118,28 @@ const Navbar = () => {
                         className="md:hidden bg-zinc-900 border-b border-zinc-800 overflow-hidden"
                     >
                         <div className="px-4 py-4 space-y-2">
-                            <Link to="/" className="block px-3 py-2 rounded-md text-base font-medium text-white hover:bg-zinc-800">Home</Link>
-                            <Link to="/hotels" className="block px-3 py-2 rounded-md text-base font-medium text-zinc-400 hover:text-white hover:bg-zinc-800">Hotels</Link>
-                            <Link to="/bookings" className="block px-3 py-2 rounded-md text-base font-medium text-zinc-400 hover:text-white hover:bg-zinc-800">My Bookings</Link>
+                            <Link to="/" onClick={() => setIsOpen(false)} className="block px-3 py-2 rounded-md text-base font-medium text-white hover:bg-zinc-800">Home</Link>
+                            <Link to="/hotels" onClick={() => setIsOpen(false)} className="block px-3 py-2 rounded-md text-base font-medium text-zinc-400 hover:text-white hover:bg-zinc-800">Hotels</Link>
+                            <Link to="/about" onClick={() => setIsOpen(false)} className="block px-3 py-2 rounded-md text-base font-medium text-zinc-400 hover:text-white hover:bg-zinc-800">About</Link>
+                            <Link to="/contact" onClick={() => setIsOpen(false)} className="block px-3 py-2 rounded-md text-base font-medium text-zinc-400 hover:text-white hover:bg-zinc-800">Contact</Link>
+
+                            {isAuthenticated ? (
+                                <>
+                                    <Link to="/bookings" onClick={() => setIsOpen(false)} className="block px-3 py-2 rounded-md text-base font-medium text-blue-400 hover:bg-zinc-800">My Bookings</Link>
+                                    <Link to="/profile" onClick={() => setIsOpen(false)} className="block px-3 py-2 rounded-md text-base font-medium text-zinc-400 hover:text-white hover:bg-zinc-800">Profile</Link>
+                                    <button
+                                        onClick={() => {
+                                            handleLogout();
+                                            setIsOpen(false);
+                                        }}
+                                        className="w-full text-left px-3 py-2 rounded-md text-base font-medium text-red-400 hover:bg-zinc-800"
+                                    >
+                                        Logout
+                                    </button>
+                                </>
+                            ) : (
+                                <Link to="/login" onClick={() => setIsOpen(false)} className="block px-3 py-2 rounded-md text-base font-medium text-white bg-white/10 hover:bg-white/20">Login</Link>
+                            )}
                         </div>
                     </motion.div>
                 )}
