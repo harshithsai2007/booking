@@ -37,9 +37,14 @@ app.get('/health', (req, res) => {
     res.json({ status: 'ok', database: 'MongoDB' });
 });
 
-app.listen(Number(PORT), '0.0.0.0', () => {
-    console.log(`🚀 Server running on port ${PORT}`);
-    console.log(`📡 Access locally: http://localhost:${PORT}`);
-    console.log(`📱 Access on network: http://192.168.1.9:${PORT}`);
-    console.log('🍃 Using MongoDB Atlas');
-});
+// Export app for Vercel
+export default app;
+
+if (process.env.NODE_ENV !== 'production') {
+    app.listen(Number(PORT), '0.0.0.0', () => {
+        console.log(`🚀 Server running on port ${PORT}`);
+        console.log(`📡 Access locally: http://localhost:${PORT}`);
+        console.log(`📱 Access on network: http://192.168.1.9:${PORT}`);
+        console.log('🍃 Using MongoDB Atlas');
+    });
+}

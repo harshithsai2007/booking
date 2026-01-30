@@ -1,12 +1,26 @@
 {
-    "installCommand": "cd client && npm install",
-    "buildCommand": "cd client && npm run build",
-    "outputDirectory": "client/dist",
-    "framework": "vite",
+    "version": 2,
+    "builds": [
+        {
+            "src": "server/src/index.ts",
+            "use": "@vercel/node"
+        },
+        {
+            "src": "client/package.json",
+            "use": "@vercel/static-build",
+            "config": {
+                "distDir": "dist"
+            }
+        }
+    ],
     "rewrites": [
         {
+            "source": "/api/(.*)",
+            "destination": "server/src/index.ts"
+        },
+        {
             "source": "/(.*)",
-            "destination": "/index.html"
+            "destination": "client/$1"
         }
     ]
 }
